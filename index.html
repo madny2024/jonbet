@@ -1,1 +1,160 @@
-ola
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Strategy Terminal</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        :root { --hacker-green: #00ff41; --background-dark: #000000; --panel-dark: rgba(20, 20, 20, 0.5); --glow-color: rgba(0, 255, 65, 0.75); --glow-color-soft: rgba(0, 255, 65, 0.5); --hacker-red: #ff4757; }
+        @keyframes scanline { 0% { background-position: 0 0; } 100% { background-position: 0 100%; } }
+        @keyframes text-flicker { 0%, 100% { opacity: 1; text-shadow: 0 0 8px var(--glow-color); } 50% { opacity: 0.8; text-shadow: 0 0 10px var(--glow-color); } }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        body { font-family: 'Roboto Mono', monospace; background-color: var(--background-dark); color: var(--hacker-green); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 20px; text-shadow: 0 0 2px var(--glow-color-soft); }
+        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%); background-size: 100% 4px; animation: scanline 10s linear infinite; pointer-events: none; z-index: 10; }
+        .container { background: transparent; padding: 25px; border-radius: 8px; width: 95%; max-width: 900px; }
+        h1 { color: var(--hacker-green); text-align: center; text-transform: uppercase; letter-spacing: 4px; animation: text-flicker 3s linear infinite; border-bottom: 1px solid var(--glow-color-soft); padding-bottom: 15px; margin-bottom: 30px; }
+        #resultados { display: flex; flex-wrap: wrap; gap: 12px; padding: 15px; border: 1px solid var(--glow-color-soft); border-radius: 4px; min-height: 70px; background-color: var(--panel-dark); backdrop-filter: blur(5px); align-content: flex-start; margin-bottom: 30px; justify-content: center; }
+        .numero { display: inline-flex; justify-content: center; align-items: center; width: 45px; height: 45px; color: var(--background-dark); background-color: var(--hacker-green); font-weight: 700; font-size: 1.4em; flex-shrink: 0; border: none; border-radius: 2px; box-shadow: 0 0 8px var(--glow-color); }
+        .numero.branco { background-color: #fff; color: #000; box-shadow: 0 0 8px #fff; }
+        .numero.preto { color: var(--hacker-green); background-color: transparent; border: 1px solid var(--hacker-green); box-shadow: none; }
+        .ai-panel { background-color: var(--panel-dark); border: 1px solid var(--glow-color-soft); border-radius: 4px; padding: 20px; margin-bottom: 25px; backdrop-filter: blur(5px); box-shadow: inset 0 0 10px rgba(0, 255, 65, 0.1), 0 0 10px rgba(0, 255, 65, 0.1); }
+        .ai-panel:last-child { margin-bottom: 0; }
+        .ai-panel h2, .ai-config h3 { text-transform: uppercase; letter-spacing: 2px; text-align: center; margin-top: 0; margin-bottom: 20px; animation: text-flicker 5s linear infinite reverse; }
+        .ai-stats { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 1em; text-transform: uppercase; flex-wrap: wrap; gap: 10px; }
+        .ai-prediction { text-align: center; padding: 15px; border-radius: 4px; background-color: rgba(0, 0, 0, 0.3); border: 1px dashed var(--glow-color-soft); }
+        .ai-prediction .label { font-size: 0.9em; color: var(--hacker-green); margin-bottom: 5px; opacity: 0.7; }
+        .ai-prediction .signal { font-size: 2em; font-weight: bold; text-shadow: 0 0 12px var(--glow-color); }
+        .ai-config { padding-top: 20px; border-top: 1px dashed #4f4f7a; }
+        .config-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        .config-item { display: grid; grid-template-columns: 1fr auto; align-items: center; background-color: rgba(0,0,0,0.3); padding: 10px; border-radius: 2px; gap: 10px; }
+        .config-item .pattern-details { text-align: left; }
+        .config-item .pattern-name { font-weight: bold; display: block; }
+        .config-item .pattern-score { font-family: monospace; font-size: 0.9em; }
+        .config-item .pattern-controls { display: flex; align-items: center; gap: 10px; }
+        .win-rate.good { color: var(--hacker-green); }
+        .win-rate.bad { color: var(--hacker-red); }
+        .param-input { width: 50px; background-color: var(--background-dark); color: var(--hacker-green); border: 1px solid var(--glow-color-soft); border-radius: 2px; text-align: center; font-family: 'Roboto Mono', monospace; }
+        .param-input:focus { outline: none; border-color: var(--hacker-green); box-shadow: 0 0 5px var(--glow-color); }
+        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 2px; border: 1px solid var(--glow-color-soft); }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 2px; background-color: var(--hacker-green); transition: .4s; border-radius: 1px; }
+        input:checked + .slider { background-color: var(--hacker-green); box-shadow: 0 0 10px var(--glow-color); }
+        input:checked + .slider:before { background-color: var(--background-dark); transform: translateX(26px); }
+        #btn-reset-memoria { width: 100%; padding: 10px; font-family: 'Roboto Mono', monospace; font-size: 1em; text-transform: uppercase; letter-spacing: 1px; background-color: transparent; color: var(--hacker-red); border: 1px solid var(--hacker-red); border-radius: 2px; cursor: pointer; transition: all 0.3s ease; }
+        #btn-reset-memoria:hover { background-color: var(--hacker-red); color: var(--background-dark); box-shadow: 0 0 15px var(--hacker-red); }
+        @media (max-width: 768px) { body { padding: 10px; font-size: 14px; } .container { padding: 15px; } h1 { font-size: 1.5em; letter-spacing: 2px; } .numero { width: 40px; height: 40px; font-size: 1.2em; } .ai-stats { flex-direction: column; align-items: flex-start; gap: 8px; } .config-item { grid-template-columns: 1fr; gap: 15px; } .config-item .pattern-controls { justify-content: flex-start; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>[ A.I. Strategy Terminal ]</h1>
+        <div id="resultados">
+            <p style="width: 100%; opacity: 0.7;">Aguardando fluxo de dados...</p>
+        </div>
+        <div class="ai-panel">
+            <h2>Núcleo do Sistema::IA Local</h2>
+            <div class="ai-stats">
+                <div id="ai-status">STATUS: <span>INICIALIZANDO...</span></div>
+                <div>VITÓRIAS: <span id="ai-wins">0</span></div>
+                <div>DERROTAS: <span id="ai-losses">0</span></div>
+            </div>
+            <div class="ai-prediction">
+                <div class="label">> SINAL ATUAL</div>
+                <div class="signal" id="ai-signal">::AGUARDANDO::</div>
+            </div>
+            <div class="ai-config">
+                <h3>[ Módulos de Lógica & Memória ]</h3>
+                <div id="config-list-container" class="config-list"></div>
+                <button id="btn-reset-memoria" style="margin-top: 20px;">Resetar Memória de Desempenho</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const resultadosDiv = document.getElementById('resultados');
+            const uiAiStatus = document.querySelector('#ai-status span');
+            const uiAiWins = document.getElementById('ai-wins');
+            const uiAiLosses = document.getElementById('ai-losses');
+            const uiAiSignal = document.getElementById('ai-signal');
+            const uiConfigList = document.getElementById('config-list-container');
+            const btnResetMemoria = document.getElementById('btn-reset-memoria');
+            
+            const SENHA_RESET = "mestre123";
+            const somSinal = new Audio('audio/sinal.mp3');
+            const somDerrota = new Audio('audio/derrota.mp3');
+            const somVitoria = new Audio('audio/vitoria.mp3'); 
+            somSinal.volume = 0.5; somDerrota.volume = 0.4; somVitoria.volume = 0.6;
+            
+            let ultimoHistoricoRenderizado = [];
+            const aiState = { wins: 0, losses: 0, status: 'ANALISANDO FLUXO DE DADOS...', entradaLevel: 0, cooldownRounds: 0, currentPrediction: null, activePattern: null };
+
+            function carregarConfigIA() { const configSalva = localStorage.getItem('iaConfig'); const defaultConfig = { 'streak': { enabled: true, triggerValue: 3 }, 'zigueZague': { enabled: true, triggerValue: 4 }, 'dominancia': { enabled: true, triggerValue: 7, historyLength: 10 }, 'cooldown': { enabled: true, triggerValue: 5 } }; const loadedConfig = configSalva ? JSON.parse(configSalva) : {}; return Object.keys(defaultConfig).reduce((acc, key) => { acc[key] = { ...defaultConfig[key], ...(loadedConfig[key] || {}) }; return acc; }, {}); }
+            function salvarConfigIA(config) { localStorage.setItem('iaConfig', JSON.stringify(config)); }
+            function carregarMemoriaIA() { const memoriaSalva = localStorage.getItem('iaMemory'); let memoria = memoriaSalva ? JSON.parse(memoriaSalva) : {}; const padroesDefault = { 'streak': { wins: 0, losses: 0 }, 'zigueZague': { wins: 0, losses: 0 }, 'dominancia': { wins: 0, losses: 0 } }; return { ...padroesDefault, ...memoria }; }
+            function salvarMemoriaIA(memoria) { localStorage.setItem('iaMemory', JSON.stringify(memoria)); }
+            function registrarResultadoDoPadrao(isWin) { if (!aiState.activePattern) return; const memoria = carregarMemoriaIA(); if (isWin) { memoria[aiState.activePattern].wins++; } else { memoria[aiState.activePattern].losses++; } salvarMemoriaIA(memoria); atualizarPainelControle(); }
+            function resetarMemoria() { const userInput = prompt("Para continuar, digite a senha de administrador:"); if (userInput === null) { return; } if (userInput === SENHA_RESET) { if (confirm("Senha correta. Você tem CERTEZA que deseja resetar TODAS as estatísticas? Esta ação não pode ser desfeita.")) { localStorage.removeItem('iaMemory'); console.log("Memória da IA resetada pelo administrador."); atualizarPainelControle(); } } else { alert("ACESSO NEGADO: Senha incorreta."); } }
+            
+            function getPatternDisplayName(patternName) { switch(patternName) { case 'streak': return 'Padrão::Sequência'; case 'zigueZague': return 'Padrão::Zigue-Zague'; case 'dominancia': return 'Padrão::Dominância'; case 'cooldown': return 'Sistema::Cooldown'; default: return patternName; } }
+            function atualizarPainelControle() { const memoria = carregarMemoriaIA(); const config = carregarConfigIA(); uiConfigList.innerHTML = ''; Object.keys(config).forEach(key => { const itemConfig = config[key]; const itemStats = memoria[key]; const displayName = getPatternDisplayName(key); const itemDiv = document.createElement('div'); itemDiv.classList.add('config-item'); let statsHTML = ''; if(itemStats){ const total = itemStats.wins + itemStats.losses; const winRate = total > 0 ? ((itemStats.wins / total) * 100).toFixed(1) : 0; const winRateClass = winRate >= 50 ? 'good' : 'bad'; statsHTML = `<span class="pattern-score">${itemStats.wins}V / ${itemStats.losses}D | ${winRate}%</span>`; } let paramsHTML = ''; if(key !== 'cooldown'){ paramsHTML += `Gatilho: <input type="number" class="param-input" id="param-${key}-trigger" value="${itemConfig.triggerValue}">`; if(itemConfig.historyLength) { paramsHTML += `<span> em </span><input type="number" class="param-input" id="param-${key}-length" value="${itemConfig.historyLength}">`; } } else { paramsHTML += `Duração: <input type="number" class="param-input" id="param-${key}-trigger" value="${itemConfig.triggerValue}"> rodadas`; } itemDiv.innerHTML = `<div class="pattern-details"><span class="pattern-name">${displayName}</span>${statsHTML}</div><div class="pattern-controls">${paramsHTML}<label class="switch"><input type="checkbox" id="toggle-${key}" ${itemConfig.enabled ? 'checked' : ''}><span class="slider"></span></label></div>`; uiConfigList.appendChild(itemDiv); document.getElementById(`toggle-${key}`).addEventListener('change', (e) => { const newConfig = carregarConfigIA(); newConfig[key].enabled = e.target.checked; salvarConfigIA(newConfig); }); const triggerInput = document.getElementById(`param-${key}-trigger`); if(triggerInput) { triggerInput.addEventListener('input', (e) => { const newConfig = carregarConfigIA(); newConfig[key].triggerValue = parseInt(e.target.value) || 0; salvarConfigIA(newConfig); }); } const lengthInput = document.getElementById(`param-${key}-length`); if(lengthInput) { lengthInput.addEventListener('input', (e) => { const newConfig = carregarConfigIA(); newConfig[key].historyLength = parseInt(e.target.value) || 0; salvarConfigIA(newConfig); }); } }); }
+            function atualizarPainelIA() { uiAiStatus.textContent = aiState.status; uiAiWins.textContent = aiState.wins; uiAiLosses.textContent = aiState.losses; if (aiState.cooldownRounds > 0) { uiAiStatus.textContent = `COOLDOWN (${aiState.cooldownRounds}r)`; } let signalText = '::AGUARDANDO::'; let signalColor = 'var(--hacker-green)'; if (aiState.currentPrediction === 'vermelho') { signalText = 'PREVISÃO: VERMELHO'; } else if (aiState.currentPrediction === 'preto') { signalText = 'PREVISÃO: PRETO'; } uiAiSignal.textContent = signalText; }
+            
+            function getCor(numero) { if (numero === 0) return 'branco'; if (numero >= 1 && numero <= 7) return 'vermelho'; return 'preto'; }
+            function gerenciarCicloIA(historicoCores) { const config = carregarConfigIA(); if (aiState.entradaLevel > 0) { const corResultado = historicoCores[0]; if (corResultado === 'branco') { aiState.status = 'ANOMALIA DETECTADA (BRANCO)'; aiState.entradaLevel = 0; aiState.currentPrediction = null; aiState.activePattern = null; return; } if (corResultado === aiState.currentPrediction) { aiState.wins++; registrarResultadoDoPadrao(true); aiState.status = `SUCESSO NA TENTATIVA ${aiState.entradaLevel}`; aiState.entradaLevel = 0; aiState.currentPrediction = null; aiState.activePattern = null; somVitoria.play(); } else { if (aiState.entradaLevel === 1) { aiState.status = 'FALHA NA 1ª. ACIONANDO 2ª...'; aiState.entradaLevel = 2; } else { aiState.losses++; registrarResultadoDoPadrao(false); aiState.status = 'FALHA TOTAL. INICIANDO COOLDOWN...'; aiState.entradaLevel = 0; aiState.currentPrediction = null; aiState.cooldownRounds = config.cooldown.triggerValue; aiState.activePattern = null; somDerrota.play(); } } return; } if (aiState.cooldownRounds > 0) { aiState.cooldownRounds--; if(aiState.cooldownRounds === 0) { aiState.status = 'ANALISANDO FLUXO DE DADOS...'; } return; } aiState.status = 'ANALISANDO FLUXO DE DADOS...'; let triggeredPatterns = []; if (config.zigueZague.enabled && historicoCores.length >= config.zigueZague.triggerValue) { const sequencia = historicoCores.slice(0, config.zigueZague.triggerValue); const isAlternating = sequencia.every((c, i) => i === 0 || c !== sequencia[i-1]); if(isAlternating && !sequencia.includes('branco')) { triggeredPatterns.push({ name: 'zigueZague', prediction: historicoCores[0] }); } } if (config.streak.enabled && historicoCores.length >= config.streak.triggerValue) { const sequencia = historicoCores.slice(0, config.streak.triggerValue); if (sequencia.every(c => c === sequencia[0] && c !== 'branco')) { triggeredPatterns.push({ name: 'streak', prediction: (sequencia[0] === 'vermelho') ? 'preto' : 'vermelho' }); } } if (config.dominancia.enabled && historicoCores.length >= config.dominancia.historyLength) { const sequencia = historicoCores.slice(0, config.dominancia.historyLength); const vermelhos = sequencia.filter(c => c === 'vermelho').length; if (vermelhos >= config.dominancia.triggerValue) { triggeredPatterns.push({ name: 'dominancia', prediction: 'preto' }); } else if (sequencia.filter(c => c === 'preto').length >= config.dominancia.triggerValue) { triggeredPatterns.push({ name: 'dominancia', prediction: 'vermelho' }); } } if (triggeredPatterns.length === 0) { return; } let chosenPattern; if (triggeredPatterns.length === 1) { chosenPattern = triggeredPatterns[0]; } else { const memoria = carregarMemoriaIA(); aiState.status = 'CONFLITO. USANDO MEMÓRIA...'; chosenPattern = triggeredPatterns.reduce((best, current) => { const bestStats = memoria[best.name]; const currentStats = memoria[current.name]; const bestWinRate = (bestStats.wins + bestStats.losses > 0) ? (bestStats.wins / (bestStats.wins + bestStats.losses)) : 0; const currentWinRate = (currentStats.wins + currentStats.losses > 0) ? (currentStats.wins / (currentStats.wins + currentStats.losses)) : 0; return currentWinRate > bestWinRate ? current : best; }); } if(chosenPattern) { aiState.entradaLevel = 1; aiState.activePattern = chosenPattern.name; aiState.currentPrediction = chosenPattern.prediction; aiState.status = `PADRÃO [${getPatternDisplayName(chosenPattern.name)}]. INICIANDO 1ª TENTATIVA...`; somSinal.play(); } }
+            
+            // --- FUNÇÃO DE BUSCA DE DADOS CORRIGIDA ---
+            async function fetchResultados() {
+                try {
+                    const response = await fetch('http://127.0.0.1:5000/api/resultados');
+                    if (!response.ok) { throw new Error(`Erro de Rede: ${response.statusText}`); }
+                    
+                    const data = await response.json(); // 'data' é a nossa lista de números: [14, 3, 9, ...]
+
+                    if (Array.isArray(data) && data.length > 0) {
+                        // Verifica se a lista nova é diferente da última que renderizamos
+                        // Comparar o primeiro item é uma forma eficiente de fazer isso
+                        if (data[0] !== ultimoHistoricoRenderizado[0]) {
+                            ultimoHistoricoRenderizado = data; // Guarda a nova lista
+
+                            resultadosDiv.innerHTML = ''; // 1. Limpa o painel
+
+                            // 2. Desenha a lista na ordem correta (mais novo à direita)
+                            data.slice().reverse().forEach(numero => {
+                                const span = document.createElement('span');
+                                span.textContent = numero;
+                                span.classList.add('numero', getCor(numero));
+                                resultadosDiv.appendChild(span);
+                            });
+
+                            // 3. Passa para a IA o histórico na ordem que ela espera (mais novo primeiro)
+                            const historicoCores = data.map(getCor);
+                            gerenciarCicloIA(historicoCores);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Falha na conexão com o servidor local:', error);
+                    uiAiStatus.textContent = 'CONEXÃO RECUSADA';
+                }
+            }
+
+            // --- INICIALIZAÇÃO DA APLICAÇÃO ---
+            atualizarPainelControle();
+            btnResetMemoria.addEventListener('click', resetarMemoria);
+            
+            setInterval(() => {
+                fetchResultados().then(() => {
+                    atualizarPainelIA();
+                });
+            }, 3000);
+
+            // Chama uma vez no início para popular a tela imediatamente
+            fetchResultados().then(() => {
+                atualizarPainelIA();
+            });
+        });
+    </script>
+</body>
+</html>
